@@ -1,1 +1,11 @@
-<h2>hello<h2></h2>
+
+
+const pagee = () => {
+  return (
+    <div>
+      <h1>Hellllllllllllllllllllllo</h1>
+    </div>
+  )
+}
+
+export default pagee
