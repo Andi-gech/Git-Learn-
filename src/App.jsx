@@ -11,7 +11,7 @@ function App() {
     <div className=" min-h-screen  overflow-hidden bg-zinc-50 flex flex-row">
       <Header />
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/," element={<Home />} />
         <Route path="/departments" element={<Department />} />
         <Route path="/Employee" element={<Employee />} />
         <Route path="/Record" element={<AttendanceRecord />} />
