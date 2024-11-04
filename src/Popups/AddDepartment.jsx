@@ -1,26 +1,56 @@
 /* eslint-disable react/prop-types */
 import { useState } from "react";
 import { Button, TextField, Typography } from "@mui/material";
+import { useMutation } from "@tanstack/react-query";
+import axios from "axios";
+import { useQueryClient } from "@tanstack/react-query";
+
+// API call to add a new department
+const addDepartment = async (newDepartment) => {
+  const response = await axios.post(
+    "http://localhost:9999/api/v1/org/departments",
+    newDepartment
+  );
+  return response.data;
+};
 
 export default function AddDepartment({ onClose }) {
-  const [departmentName, setDepartmentName] = useState("");
-  const [departmentDescription, setDepartmentDescription] = useState("");
+  const [name, setName] = useState("");
+  const [location, setLocation] = useState("");
+  const [abbreviatedName, setAbbreviatedName] = useState("");
+  const queryclient = useQueryClient();
+
+  // Set up useMutation hook
+  const mutation = useMutation(addDepartment, {
+    onSuccess: () => {
+      queryclient.invalidateQueries("departments");
+      // Clear the form
+    setName("");
+    setLocation("");
+    setAbbreviatedName("");
+
+    // Close the modal
+    onClose();
+    },
+    onError: (error) => {
+      console.error("Error adding department:", error);
+    },
+  });
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Handle form submission logic (e.g., API call)
-    console.log({
-      departmentName,
-      departmentDescription,
-    });
+    // Prepare department data
+    const newDepartment = {
+      name,
+      location,
+      abbreviatedName,
+    };
 
-    // Clear the form
-    setDepartmentName("");
-    setDepartmentDescription("");
+    // Trigger the mutation
+    mutation.mutate(newDepartment);
 
-    // Close the modal
-    onClose();
+    
   };
 
   return (
@@ -35,26 +65,44 @@ export default function AddDepartment({ onClose }) {
             label="Department Name"
             variant="outlined"
             margin="normal"
-            value={departmentName}
-            onChange={(e) => setDepartmentName(e.target.value)}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
           />
           <TextField
             fullWidth
-            label="Department Description"
+            label="Location"
             variant="outlined"
             margin="normal"
-            value={departmentDescription}
-            onChange={(e) => setDepartmentDescription(e.target.value)}
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+          />
+          <TextField
+            fullWidth
+            label="Abbreviated Name"
+            variant="outlined"
+            margin="normal"
+            value={abbreviatedName}
+            onChange={(e) => setAbbreviatedName(e.target.value)}
           />
           <div className="flex justify-between mt-4">
             <Button variant="outlined" onClick={onClose}>
               Cancel
             </Button>
-            <Button variant="contained" color="primary" type="submit">
-              Add Department
+            <Button
+              variant="contained"
+              color="primary"
+              type="submit"
+              disabled={mutation.isLoading}
+            >
+              {mutation.isLoading ? "Adding..." : "Add Department"}
             </Button>
           </div>
         </form>
+        {mutation.isError && (
+          <p style={{ color: "red" }}>
+            Error adding department: {mutation.error.message}
+          </p>
+        )}
       </div>
     </div>
   );

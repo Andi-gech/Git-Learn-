@@ -6,72 +6,25 @@ import { Button } from "@mui/material";
 import { PieChart } from "@mui/x-charts/PieChart";
 import Settings from "../Popups/Settings";
 import { useState } from "react";
+import UseFetchDepartments from "../hooks/UseFetchDepartments";
+import UseFetchPayroll from "../hooks/UseFetchPayroll";
 export default function Home() {
   const [settingson, setsetting] = useState();
-  const data = [
-    {
-      name: "Sales",
-      EmployeeNo: 4000,
-    },
-    {
-      name: "Marketing",
-      EmployeeNo: 3000,
-    },
-    {
-      name: "Finance",
-      EmployeeNo: 2000,
-    },
-    {
-      name: "Human Resources",
-      EmployeeNo: 2780,
-    },
-    {
-      name: "Operations",
-      EmployeeNo: 1890,
-    },
-  ];
+  const { data } = UseFetchDepartments();
+  const { data: payrolls } = UseFetchPayroll(2024, 10);
+  const date = new Date();
 
-  const rows = [
-    {
-      id: 1,
-      employeeName: "John Doe",
-      payrollDate: "2024-10-01",
-      amount: "3,500",
-      status: "Paid",
-    },
-    {
-      id: 2,
-      employeeName: "Jane Smith",
-      payrollDate: "2024-10-01",
-      amount: "4,200",
-      status: "Paid",
-    },
-    {
-      id: 3,
-      employeeName: "Mark Johnson",
-      payrollDate: "2024-10-01",
-      amount: "2,800",
-      status: "Pending",
-    },
-    {
-      id: 4,
-      employeeName: "Emily Davis",
-      payrollDate: "2024-10-01",
-      amount: "3,750",
-      status: "Paid",
-    },
-    {
-      id: 5,
-      employeeName: "Michael Brown",
-      payrollDate: "2024-10-01",
-      amount: "3,200",
-      status: "Failed",
-    },
-  ];
+  const rows = payrolls?.data?.map((payroll) => ({
+    id: payroll.id,
+    employeeName: payroll.employeeFirstName,
+    payrollDate: payroll.month + "-" + payroll.year,
+    amount: payroll.netPay,
+    status: payroll.paymentStatus,
+  }));
 
   const columns = [
     { field: "employeeName", headerName: "Employee Name", width: 200 },
-    { field: "payrollDate", headerName: "Payroll Date", width: 150 },
+    { field: "payrollDate", headerName: "Payroll Month", width: 150 },
     { field: "amount", headerName: "Amount", width: 120 },
     { field: "status", headerName: "Status", width: 100 },
   ];
@@ -98,7 +51,7 @@ export default function Home() {
             <FaGear />
           </div>
           <Button variant="contained" color="primary">
-            CREATE NEW ORGANIZATIONS
+            CREATE NEW Department
           </Button>
         </div>
       </div>
@@ -108,7 +61,7 @@ export default function Home() {
             <AreaChart
               width={600}
               height={240}
-              data={data}
+              data={data?.data}
               margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
             >
               <defs>
@@ -123,12 +76,12 @@ export default function Home() {
                   {/* Lighter green shade */}
                 </linearGradient>
               </defs>
-              <XAxis dataKey="name" tick={{ fontSize: 12 }} />{" "}
+              <XAxis dataKey="department.name" tick={{ fontSize: 12 }} />{" "}
               {/* Smaller text size */}
               <Tooltip />
               <Area
                 type="monotone"
-                dataKey="EmployeeNo"
+                dataKey="employeeCount"
                 stroke="#4caf50"
                 fillOpacity={0.2}
                 fill="url(#colorUv)"
@@ -138,15 +91,17 @@ export default function Home() {
 
           <div className="w-[382px] flex-shrink-0 bg-yellow-50 flex flex-row items-center justify-center rounded-md h-[250px] border-[1px] border-gray-200">
             <div className="w-[150px] rounded-md h-[200px] bg-zinc-900 flex flex-col items-center justify-center">
-              <p className="text-[20px] text-white font-bold">April</p>
-              <p className="text-[90px] text-white font-bold">23</p>
+              <p className="text-[20px] text-white font-bold">
+                {date.toLocaleString("en-US", { month: "long" })}
+              </p>
+              <p className="text-[90px] text-white font-bold">
+                {date.toLocaleString("en-US", { day: "numeric" })}
+              </p>
             </div>
             <div className="ml-5 flex flex-col justify-center items-center ">
-              <p className="text-[17px] text-zinc-900 font-bold">
-                Next Payment Date
-              </p>
+              <p className="text-[17px] text-zinc-900 font-bold">Date</p>
               <p className="text-[17px] text-zinc-400 font-bold">
-                25th April 2024
+                {date.toDateString()}
               </p>
             </div>
           </div>
@@ -171,22 +126,37 @@ export default function Home() {
             <div className="flex flex-row mx-3">
               <div className="w-[4px] bg-zinc-900"></div>
               <div className="flex flex-col items-center justify-between ">
-                <p className="text-[17px]  text-gray-600 mx-3">Payment</p>
-                <p className="text-[24px] font-bold">200Birr</p>
+                <p className="text-[17px]  text-gray-600 mx-3">Pending</p>
+                <p className="text-[24px] font-bold">
+                  {
+                    payrolls?.data.filter((p) => p.paymentStatus === "PENDING")
+                      .length
+                  }
+                </p>
               </div>
             </div>
             <div className="flex flex-row mx-3">
               <div className="w-[4px] bg-blue-900"></div>
               <div className="flex flex-col mx-2 items-center justify-between ">
                 <p className="text-[17px]  text-gray-600 mx-3">Paid</p>
-                <p className="text-[24px] font-bold">200Birr</p>
+                <p className="text-[24px] font-bold">
+                  {
+                    payrolls?.data.filter((p) => p.paymentStatus === "PAID")
+                      .length
+                  }
+                </p>
               </div>
             </div>
             <div className="flex flex-row mx-3">
               <div className="w-[4px] bg-blue-100"></div>
               <div className="flex flex-col mx-2 items-center justify-between ">
                 <p className="text-[17px]  text-gray-600 mx-3">Pending</p>
-                <p className="text-[24px] font-bold">200Birr</p>
+                <p className="text-[24px] font-bold">
+                  {
+                    payrolls?.data.filter((p) => p.paymentStatus === "FAILED")
+                      .length
+                  }
+                </p>
               </div>
             </div>
           </div>
@@ -194,9 +164,28 @@ export default function Home() {
             series={[
               {
                 data: [
-                  { id: 0, value: 40, color: "black" },
-                  { id: 1, value: 30, color: "blue" },
-                  { id: 2, value: 20, color: "lightblue" },
+                  {
+                    id: 1,
+                    value:
+                      payrolls?.data.filter(
+                        (p) => p.paymentStatus === "PENDING"
+                      ).length || 0, // Count of PENDING
+                    color: "blue",
+                  },
+                  {
+                    id: 2,
+                    value:
+                      payrolls?.data.filter((p) => p.paymentStatus === "PAID")
+                        .length || 0, // Count of PAID
+                    color: "green",
+                  },
+                  {
+                    id: 3,
+                    value:
+                      payrolls?.data.filter((p) => p.paymentStatus === "FAILED")
+                        .length || 0, // Count of FAILED
+                    color: "red",
+                  },
                 ],
                 innerRadius: 30,
                 outerRadius: 100,
