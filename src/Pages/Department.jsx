@@ -2,17 +2,33 @@ import { Button } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { useState } from "react";
 import AddDepartment from "../Popups/AddDepartment";
+import { useMutation } from "@tanstack/react-query";
+import axios from "axios";
+import { useQueryClient } from "@tanstack/react-query";
+import UseFetchDepartments from "../hooks/UseFetchDepartments";
 export default function Department() {
+  const queryClient = useQueryClient();
   const [AddDepartments, setAddDepartment] = useState(false);
+  const { data } = UseFetchDepartments();
+  const deleteDepartment = useMutation({
+    mutationFn: async (id) => {
+      return await axios.delete(`http://localhost:4040/api/departments/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries("departments");
+    },
+  });
 
   const columns = [
     { field: "id", headerName: "ID", width: 70 },
-    { field: "departmentName", headerName: "Department Name", width: 200 },
-    { field: "departmentHead", headerName: "Department Head", width: 200 },
+    { field: "name", headerName: "Department Name", width: 200 },
+    { field: "location", headerName: "Department Location", width: 200 },
+    { field: "abbreviatedName", headerName: "Abbreviated Name", width: 100 },
+
     {
       field: "numberOfEmployees",
       headerName: "Number of Employees",
-      width: 180,
+      width: 120,
     },
 
     {
@@ -33,58 +49,13 @@ export default function Department() {
       ),
     },
   ];
-
-  const rows = [
-    {
-      id: 1,
-      departmentName: "Sales",
-      departmentHead: "John Doe",
-      numberOfEmployees: 15,
-      budgetAllocation: "$150,000",
-    },
-    {
-      id: 2,
-      departmentName: "Human Resources",
-      departmentHead: "Jane Smith",
-      numberOfEmployees: 10,
-      budgetAllocation: "$100,000",
-    },
-    {
-      id: 3,
-      departmentName: "Marketing",
-      departmentHead: "Alice Johnson",
-      numberOfEmployees: 8,
-      budgetAllocation: "$80,000",
-    },
-    {
-      id: 4,
-      departmentName: "Finance",
-      departmentHead: "Bob Williams",
-      numberOfEmployees: 12,
-      budgetAllocation: "$120,000",
-    },
-    {
-      id: 5,
-      departmentName: "IT Support",
-      departmentHead: "Emily Davis",
-      numberOfEmployees: 20,
-      budgetAllocation: "$200,000",
-    },
-    {
-      id: 6,
-      departmentName: "Research and Development",
-      departmentHead: "Michael Brown",
-      numberOfEmployees: 25,
-      budgetAllocation: "$300,000",
-    },
-    {
-      id: 7,
-      departmentName: "Customer Service",
-      departmentHead: "Sarah Wilson",
-      numberOfEmployees: 18,
-      budgetAllocation: "$160,000",
-    },
-  ];
+  const rows = data?.data?.map((item) => ({
+    id: item.department.id,
+    name: item.department.name,
+    location: item.department.location,
+    abbreviatedName: item.department.abbreviatedName,
+    numberOfEmployees: item.employeeCount,
+  }));
 
   const handleEdit = (id) => {
     console.log("Edit department with ID:", id);
@@ -93,6 +64,7 @@ export default function Department() {
 
   const handleDelete = (id) => {
     console.log("Delete department with ID:", id);
+    deleteDepartment.mutate(id);
     // Implement delete functionality
   };
   return (
@@ -106,9 +78,8 @@ export default function Department() {
             Manage Departments
           </p>
         </div>
-        <div>
-          <DataGrid rows={rows} columns={columns} pageSize={5} />
-        </div>
+
+        <DataGrid rows={rows} columns={columns} pageSize={5} />
       </div>
       <div className="w-[19%]  ">
         <div className="w-full border-[1px] border-gray-200 bg-white h-[200px] rounded-md p-2 flex flex-col">

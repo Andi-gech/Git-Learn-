@@ -2,14 +2,20 @@ import { Button } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import AddEmployee from "../Popups/AddEmployee";
 import { useState } from "react";
+import UseFetchEmployee from "../hooks/UseFetchEmployee";
+import { useMutation } from "@tanstack/react-query";
+import axios from "axios";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Employee() {
   const [AddEmploye, setAddEmployee] = useState();
+  const { data } = UseFetchEmployee();
   const columns = [
     { field: "id", headerName: "ID", width: 70 },
-    { field: "employeeName", headerName: "Employee Name", width: 200 },
-    { field: "department", headerName: "Department", width: 200 },
-    { field: "jobTitle", headerName: "Job Title", width: 180 },
+    { field: "firstName", headerName: "FirstName", width: 100 },
+    { field: "lastName", headerName: "LastName", width: 100 },
+    { field: "departmentId", headerName: "Department", width: 200 },
+    { field: "salary", headerName: "Job Salary", width: 180 },
     {
       field: "actions",
       headerName: "Actions",
@@ -28,58 +34,15 @@ export default function Employee() {
       ),
     },
   ];
-
-  const rows = [
-    {
-      id: 1,
-      employeeName: "John Doe",
-      department: "Sales",
-      jobTitle: "Sales Manager",
-      salary: "$70,000",
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: async (id) => {
+      return await axios.delete(`http://localhost:7777/api/v1/employee/${id}`);
     },
-    {
-      id: 2,
-      employeeName: "Jane Smith",
-      department: "Human Resources",
-      jobTitle: "HR Specialist",
-      salary: "$60,000",
+    onSuccess: () => {
+      queryClient.invalidateQueries("Employee");
     },
-    {
-      id: 3,
-      employeeName: "Alice Johnson",
-      department: "Marketing",
-      jobTitle: "Marketing Coordinator",
-      salary: "$55,000",
-    },
-    {
-      id: 4,
-      employeeName: "Bob Williams",
-      department: "Finance",
-      jobTitle: "Financial Analyst",
-      salary: "$75,000",
-    },
-    {
-      id: 5,
-      employeeName: "Emily Davis",
-      department: "IT Support",
-      jobTitle: "IT Support Specialist",
-      salary: "$65,000",
-    },
-    {
-      id: 6,
-      employeeName: "Michael Brown",
-      department: "Research and Development",
-      jobTitle: "Research Scientist",
-      salary: "$85,000",
-    },
-    {
-      id: 7,
-      employeeName: "Sarah Wilson",
-      department: "Customer Service",
-      jobTitle: "Customer Service Representative",
-      salary: "$50,000",
-    },
-  ];
+  });
 
   const handleEdit = (id) => {
     console.log("Edit employee with ID:", id);
@@ -87,8 +50,7 @@ export default function Employee() {
   };
 
   const handleDelete = (id) => {
-    console.log("Delete employee with ID:", id);
-    // Implement delete functionality
+    mutation.mutate(id);
   };
 
   return (
@@ -106,9 +68,8 @@ export default function Employee() {
             Manage Employees
           </p>
         </div>
-        <div>
-          <DataGrid rows={rows} columns={columns} pageSize={5} />
-        </div>
+
+        <DataGrid rows={data?.data} columns={columns} pageSize={5} />
       </div>
       <div className="w-[19%]">
         <div className="w-full border-[1px] border-gray-200 bg-zinc-900 h-[200px] rounded-md p-2 flex flex-col">
