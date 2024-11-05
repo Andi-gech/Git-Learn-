@@ -24,7 +24,13 @@ const createPayroll = async ({ year, month }) => {
   );
   return data;
 };
-
+const updateAttendance = async (attendanceDto) => {
+  const { data } = await axios.post(
+    `http://localhost:4343/api/v1/attendance/createOrUpdate`,
+    attendanceDto
+  );
+  return data;
+};
 const AttendanceRecord = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
@@ -73,11 +79,31 @@ const AttendanceRecord = () => {
       setPayrollStatus(err.response.data.message);
     },
   });
+  const updateMutation = useMutation(updateAttendance, {
+    onSuccess: () => {
+      // Optionally refetch data or show success message
+      queryClient.invalidateQueries("attendance");
+    },
+    onError: (err) => {
+      console.error("Error updating attendance:", err.response?.data?.message);
+    },
+  });
 
   const handleCellEdit = (params) => {
     const { id, field, value } = params;
-    const updatedRow = rows?.find((row) => row?.id === id);
-    const updatedAttendance = [...updatedRow?.attendance];
+
+    // Find the updated row
+    const updatedRow = rows.find((row) => row.id === id);
+    console.log("updatedRow", params);
+
+    // Check if updatedRow exists and field is a valid index
+    if (!updatedRow || field < 0 || field >= updatedRow.attendance.length) {
+      console.error("Invalid row or field index");
+      return; // Early return if invalid
+    }
+
+    // Clone attendance array and update the value
+    const updatedAttendance = [...updatedRow.attendance];
     updatedAttendance[field] = value;
 
     const statusMapping = {
@@ -88,15 +114,18 @@ const AttendanceRecord = () => {
     };
 
     const updatedAttendanceDto = {
-      employeeId: updatedRow?.id,
-      departmentId: updatedRow?.department,
+      employeeId: updatedRow.id,
+      departmentId: updatedRow.department,
       status: statusMapping[value] || value,
       date: new Date(selectedYear, selectedMonth, Number(field) + 2)
-        ?.toISOString()
+        .toISOString()
         .split("T")[0],
     };
 
-    mutation.mutate(updatedAttendanceDto);
+    console.log("update", updatedAttendanceDto);
+
+    // Trigger the mutation
+    updateMutation.mutate(updatedAttendanceDto);
   };
 
   const getCellStyle = (status) => {
