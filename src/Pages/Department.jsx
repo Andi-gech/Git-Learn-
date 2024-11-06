@@ -2,20 +2,34 @@ import { Button } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { useState } from "react";
 import AddDepartment from "../Popups/AddDepartment";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useQueryClient } from "@tanstack/react-query";
 import UseFetchDepartments from "../hooks/UseFetchDepartments";
+import LoadingPopup from "../Popups/LoadingPopup";
+import ErrorPopup from "../Popups/ErrorPopup";
+import SucessPopup from "../Popups/SucessPopup";
 export default function Department() {
   const queryClient = useQueryClient();
   const [AddDepartments, setAddDepartment] = useState(false);
-  const { data } = UseFetchDepartments();
+  const { data, isLoading, isError } = UseFetchDepartments();
+  const [sucess, setSucess] = useState(false);
+  const [error, setError] = useState(false);
   const deleteDepartment = useMutation({
     mutationFn: async (id) => {
       return await axios.delete(`http://localhost:4040/api/departments/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries("departments");
+      setSucess(true);
+      setTimeout(() => {
+        setSucess(false);
+      }, 2000);
+    },
+    onError: () => {
+      setError(true);
+      setTimeout(() => {
+        setError(false);
+      }, 2000);
     },
   });
 
@@ -34,7 +48,7 @@ export default function Department() {
     {
       field: "actions",
       headerName: "Actions",
-      width: 230,
+      width: 200,
       renderCell: (params) => (
         <>
           <Button onClick={() => handleEdit(params.row.id)}>Edit</Button>
@@ -59,20 +73,20 @@ export default function Department() {
 
   const handleEdit = (id) => {
     console.log("Edit department with ID:", id);
-    // Implement edit functionality
   };
 
   const handleDelete = (id) => {
-    console.log("Delete department with ID:", id);
     deleteDepartment.mutate(id);
-    // Implement delete functionality
   };
   return (
-    <div className="w-full ml-[15%] bg-white flex flex-row px-[20px] py-[20px] min-h-screen justify-between">
+    <div className="w-full ml-[15%] bg-white dark:bg-zinc-900 flex flex-row px-[20px] py-[20px] min-h-screen justify-between">
       {AddDepartments && (
         <AddDepartment onClose={() => setAddDepartment(false)} />
       )}
-      <div className="flex flex-col w-[80%] h-full bg-white  rounded-md justify-between ">
+      {(isLoading || deleteDepartment.isLoading) && <LoadingPopup />}
+      {(isError || error) && <ErrorPopup />}
+      {sucess && <SucessPopup />}
+      <div className="flex flex-col  overflow-x-hidden h-full  rounded-md justify-between ">
         <div className="w-full  h-[50px]">
           <p className="text-[24px] text-gray-800 font-bold">
             Manage Departments
@@ -82,7 +96,7 @@ export default function Department() {
         <DataGrid rows={rows} columns={columns} pageSize={5} />
       </div>
       <div className="w-[19%]  ">
-        <div className="w-full border-[1px] border-gray-200 bg-white h-[200px] rounded-md p-2 flex flex-col">
+        <div className="w-full border-[1px] border-gray-200 bg-white  dark: bg-zinc-900 h-[200px] rounded-md p-2 flex flex-col">
           <div className="w-full h-[40px] border-b-[1px] border-gray-700 flex bg-blue-600 items-center justify-center">
             <p className="text-[14px]  text-white px-4 py-2">View Department</p>
           </div>

@@ -13,11 +13,9 @@ export default function Buttons({ name, route }) {
   return (
     <Link to={route}>
       <div
-        style={{
-          color: active ? "#60a5fa" : "#3f3f46",
-          background: active ? "#f8fafc" : "white",
-        }}
-        className="shadow-sm my-1 shadow-zinc-50 h-[40px] flex items-center  pl-[30px]"
+        className={`shadow-sm my-1 ${
+          active ? " text-orange-500" : "#3f3f46 dark:text-white"
+        }  shadow-zinc-50 dark:shadow-zinc-700 h-[40px] flex items-center  pl-[30px]`}
       >
         {name}
       </div>

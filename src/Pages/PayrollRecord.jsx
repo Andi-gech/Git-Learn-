@@ -1,18 +1,12 @@
-/* eslint-disable no-unused-vars */
-import React, { useState, useMemo } from "react";
-import {
-  Select,
-  MenuItem,
-  CircularProgress,
-  Button,
-  Modal,
-  Typography,
-  Box,
-} from "@mui/material";
+import { useState, useMemo } from "react";
+import { Select, MenuItem, Button } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import UseFetchPayroll from "../hooks/UseFetchPayroll";
+import LoadingPopup from "../Popups/LoadingPopup";
+import ErrorPopup from "../Popups/ErrorPopup";
+import SucessPopup from "../Popups/SucessPopup";
 
 const deletePayrolls = async ({ year, month }) => {
   await axios.delete(
@@ -20,28 +14,32 @@ const deletePayrolls = async ({ year, month }) => {
   );
 };
 
+const updatePayrollStatus = async ({ id, status }) => {
+  await axios.patch(`http://localhost:5252/api/v1/payroll/${id}`, {
+    paymentStatus: status,
+  });
+};
+
 const PayrollRecord = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-
-  const [open, setOpen] = useState(false);
-  const [payrollStatus, setPayrollStatus] = useState("");
+  const [sucess, setSucess] = useState(false);
+  const [error, setError] = useState(false);
   const queryClient = useQueryClient();
 
   const {
     data: payrollData,
-    error,
     isLoading,
+    isError,
   } = UseFetchPayroll(selectedYear, selectedMonth);
 
   const rows = useMemo(() => {
     if (!payrollData) return [];
-    return payrollData?.data?.map((record) => ({
+    return payrollData.data.map((record) => ({
       id: record.id,
       employeeId: record.employeeId,
       name: record.employeeFirstName,
       salary: record.baseSalary,
-
       pensionDeduction: record.pensionDeduction,
       taxDeduction: record.taxDeduction,
       overtimeHours: record.overtimeHours,
@@ -49,7 +47,7 @@ const PayrollRecord = () => {
       bonuses: record.bonuses,
       totalDeductions: record.totalDeductions,
       grossPay: record.grossPay,
-      netPay: record.netPay,
+      netPay: record.netPay > 0 ? record.netPay : 0,
       status: record.paymentStatus,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
@@ -58,54 +56,53 @@ const PayrollRecord = () => {
     }));
   }, [payrollData]);
 
-  const mutation = useMutation(deletePayrolls, {
+  const deleteMutation = useMutation(deletePayrolls, {
     onSuccess: () => {
-      setPayrollStatus("Payroll deleted successfully.");
-
+      setSucess(true);
+      setTimeout(() => {
+        setSucess(false);
+      }, 2000);
       queryClient.invalidateQueries(["payroll", selectedYear, selectedMonth]);
     },
     onError: () => {
-      setPayrollStatus("Failed to delete payroll. Please try again.");
+      setError(true);
+      setTimeout(() => {
+        setError(false);
+      }, 2000);
+    },
+  });
+
+  const updateMutation = useMutation(updatePayrollStatus, {
+    onSuccess: () => {
+      setPayrollStatus("Payroll status updated successfully.");
+      queryClient.invalidateQueries(["payroll", selectedYear, selectedMonth]);
+    },
+    onError: () => {
+      setPayrollStatus("Failed to update payroll status. Please try again.");
     },
   });
 
   const handleDeletePayroll = () => {
-    mutation.mutate({ year: selectedYear, month: selectedMonth });
-    setOpen(true);
+    deleteMutation.mutate({ year: selectedYear, month: selectedMonth });
   };
 
-  const handleClose = () => {
-    setOpen(false);
+  const handleStatusChange = (id, status) => {
+    updateMutation.mutate({ id, status });
   };
 
   const handleYearChange = (event) => setSelectedYear(event.target.value);
   const handleMonthChange = (event) => setSelectedMonth(event.target.value);
 
-  if (error) {
-    return (
-      <div className="h-[600px] w-full flex bg-white items-center justify-center">
-        <div className="text-red-600 text-lg">
-          Error fetching data. Please try again later.
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="h-[600px] w-full flex bg-white items-center justify-center">
-        <CircularProgress />
-        <span className="ml-2 text-lg">Loading data...</span>
-      </div>
-    );
-  }
-
   return (
-    <div className="h-screen w-full pl-[17%] bg-white overflow-x-auto overflow-hidden flex flex-col">
-      <h1 className="text-2xl font-bold mb-4">
-        Payroll Record For ({selectedMonth + 1} - {selectedYear}){" "}
+    <div className="h-screen w-full pl-[17%] bg-white dark:bg-zinc-900 overflow-x-auto overflow-hidden flex flex-col">
+      <h1 className="text-2xl font-bold mb-4 dark:text-white">
+        Payroll Record For ({selectedMonth + 1} - {selectedYear})
       </h1>
-
+      {(isLoading || deleteMutation.isLoading || updateMutation.isLoading) && (
+        <LoadingPopup />
+      )}
+      {isError || (error && <ErrorPopup />)}
+      {sucess && <SucessPopup />}
       <div className="flex mb-4">
         <Select
           value={selectedYear}
@@ -127,13 +124,12 @@ const PayrollRecord = () => {
           ))}
         </Select>
       </div>
-
       <div style={{ flex: 1, height: "400px" }}>
         <DataGrid
           rows={rows}
           columns={[
-            { field: "name", headerName: "name", width: 150 },
-            { field: "salary", headerName: "salary", width: 150 },
+            { field: "name", headerName: "Name", width: 150 },
+            { field: "salary", headerName: "Salary", width: 150 },
             { field: "bonuses", headerName: "Bonuses", width: 150 },
             { field: "grossPay", headerName: "Gross Pay", width: 150 },
             {
@@ -152,9 +148,31 @@ const PayrollRecord = () => {
               headerName: "Total Deductions",
               width: 150,
             },
-
             { field: "netPay", headerName: "Net Pay", width: 150 },
-            { field: "status", headerName: "status", width: 150 },
+            {
+              field: "status",
+              headerName: "Status",
+              width: 250,
+              renderCell: (params) => {
+                return (
+                  <Select
+                    value={params.row.status}
+                    onChange={(event) => {
+                      console.log(
+                        params.row.id,
+                        event.target.value,
+                        params.row.status
+                      );
+                      handleStatusChange(params.row.id, event.target.value);
+                    }}
+                  >
+                    <MenuItem value="PENDING">Pending</MenuItem>
+                    <MenuItem value="PAID">Paid</MenuItem>
+                    <MenuItem value="REJECTED">Rejected</MenuItem>
+                  </Select>
+                );
+              },
+            },
           ]}
           pageSize={5}
           rowsPerPageOptions={5}
@@ -162,7 +180,6 @@ const PayrollRecord = () => {
           className="data-grid"
         />
       </div>
-
       <div className="mb-[30px]">
         <Button
           variant="contained"
@@ -172,38 +189,7 @@ const PayrollRecord = () => {
           Delete Payroll
         </Button>
       </div>
-
-      <Modal open={open} onClose={handleClose}>
-        <Box
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: 400,
-            bgcolor: "background.paper",
-            boxShadow: 24,
-            p: 4,
-            borderRadius: 2,
-            border: "1px solid #ccc",
-          }}
-        >
-          <Typography variant="h6" component="h2" align="center" gutterBottom>
-            Payroll Status
-          </Typography>
-          <Typography
-            variant="body1"
-            align="center"
-            color="textSecondary"
-            gutterBottom
-          >
-            {payrollStatus}
-          </Typography>
-          <Button variant="contained" onClick={handleClose} fullWidth>
-            Close
-          </Button>
-        </Box>
-      </Modal>
+      =
     </div>
   );
 };
