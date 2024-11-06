@@ -18,7 +18,7 @@ import useDarkSide from "../hooks/useDarkSide";
 import { DarkModeSwitch } from "react-toggle-dark-mode";
 import { useNavigate } from "react-router-dom";
 
- Navigate,export default function Settings({ onClose }) {
+export default function Settings({ onClose }) {
   const [addDeduction, setAddDeduction] = useState(false);
   const { data } = UseFetchDeductions();
   const queryClient = useQueryClient();
