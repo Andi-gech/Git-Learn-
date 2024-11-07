@@ -3,19 +3,20 @@ import React, { useState, useMemo } from "react";
 import {
   Select,
   MenuItem,
-  CircularProgress,
   Button,
   Modal,
   Typography,
   Box,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import UseFetchAttendance from "../hooks/UseFetchAttendance";
 import UseFetchEmployee from "../hooks/UseFetchEmployee";
+import LoadingPopup from "../Popups/LoadingPopup";
+import ErrorPopup from "../Popups/ErrorPopup";
+import SucessPopup from "../Popups/SucessPopup";
 
-// Create payroll records from API
 const createPayroll = async ({ year, month }) => {
   const { data } = await axios.post(
     `http://localhost:5252/api/v1/payroll/create-all?year=${year}&month=${
@@ -24,25 +25,26 @@ const createPayroll = async ({ year, month }) => {
   );
   return data;
 };
-
+const updateAttendance = async (attendanceDto) => {
+  const { data } = await axios.post(
+    `http://localhost:4343/api/v1/attendance/createOrUpdate`,
+    attendanceDto
+  );
+  return data;
+};
 const AttendanceRecord = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const queryClient = useQueryClient();
 
-  // State for modal
-  const [open, setOpen] = useState(false);
-  const [payrollStatus, setPayrollStatus] = useState("");
+  const [sucess, setSucess] = useState(false);
+  const [error, setError] = useState(false);
 
-  // Fetch employee data
-  const { data: employeeData } = UseFetchEmployee();
+  const { data: employeeData, isLoading: isEmployeeLoading } =
+    UseFetchEmployee();
 
-  // Fetch attendance data
-  const {
-    data: attendanceData,
-    error,
-    isLoading,
-  } = UseFetchAttendance(selectedYear, selectedMonth);
+  const { data: attendanceData, isLoading: isAttendanceLoading } =
+    UseFetchAttendance(selectedYear, selectedMonth);
 
   const rows = useMemo(() => {
     if (!attendanceData || !employeeData) return [];
@@ -63,21 +65,39 @@ const AttendanceRecord = () => {
     }));
   }, [attendanceData, employeeData, selectedMonth, selectedYear]);
 
-  // Mutation for creating payroll
   const mutation = useMutation(createPayroll, {
     onSuccess: () => {
-      setPayrollStatus("Payroll created successfully.");
-      queryClient.invalidateQueries("attendance"); // Optionally refetch attendance data
+      setSucess(true);
+      setTimeout(() => {
+        setSucess(false);
+      }, 2000);
+      queryClient.invalidateQueries("attendance");
     },
     onError: (err) => {
-      setPayrollStatus(err.response.data.message);
+      setError(true);
+      setTimeout(() => {
+        setError(false);
+      }, 2000);
+    },
+  });
+  const updateMutation = useMutation(updateAttendance, {
+    onSuccess: () => {
+      queryClient.invalidateQueries("attendance");
+    },
+    onError: (err) => {
+      console.error("Error updating attendance:", err.response?.data?.message);
     },
   });
 
   const handleCellEdit = (params) => {
     const { id, field, value } = params;
-    const updatedRow = rows?.find((row) => row?.id === id);
-    const updatedAttendance = [...updatedRow?.attendance];
+
+    const updatedRow = rows.find((row) => row.id === id);
+    console.log("updatedRow", params);
+
+    
+
+    const updatedAttendance = [...updatedRow.attendance];
     updatedAttendance[field] = value;
 
     const statusMapping = {
@@ -88,15 +108,17 @@ const AttendanceRecord = () => {
     };
 
     const updatedAttendanceDto = {
-      employeeId: updatedRow?.id,
-      departmentId: updatedRow?.department,
+      employeeId: updatedRow.id,
+      departmentId: updatedRow.department,
       status: statusMapping[value] || value,
       date: new Date(selectedYear, selectedMonth, Number(field) + 2)
-        ?.toISOString()
+        .toISOString()
         .split("T")[0],
     };
 
-    mutation.mutate(updatedAttendanceDto);
+    console.log("update", updatedAttendanceDto);
+
+    updateMutation.mutate(updatedAttendanceDto);
   };
 
   const getCellStyle = (status) => {
@@ -161,37 +183,16 @@ const AttendanceRecord = () => {
 
   const handleCalculatePayroll = () => {
     mutation.mutate({ year: selectedYear, month: selectedMonth });
-    setOpen(true);
   };
-
-  const handleClose = () => {
-    setOpen(false);
-  };
-
-  if (error) {
-    return (
-      <div className="h-[600px] w-full flex bg-white items-center justify-center">
-        <div className="text-red-600 text-lg">
-          Error fetching data. Please try again later.
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="h-[600px] w-full flex bg-white items-center justify-center">
-        <CircularProgress />
-        <span className="ml-2 text-lg">Loading data...</span>
-      </div>
-    );
-  }
 
   return (
-    <div className="h-screen w-full pl-[17%] bg-white overflow-x-auto overflow-hidden flex flex-col">
+    <div className="h-screen w-full pl-[17%] bg-white dark:bg-zinc-900 overflow-x-auto overflow-hidden flex flex-col text-black dark:text-white">
       <h1 className="text-2xl font-bold mb-4">
         Attendance Record For ({selectedMonth + 1} - {selectedYear})
       </h1>
+      {(isAttendanceLoading || isEmployeeLoading) && <LoadingPopup />}
+      {error && <ErrorPopup />}
+      {sucess && <SucessPopup />}
 
       <div className="flex mb-4">
         <Select
@@ -235,38 +236,6 @@ const AttendanceRecord = () => {
           Calculate Payroll
         </Button>
       </div>
-
-      <Modal open={open} onClose={handleClose}>
-        <Box
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: 400,
-            bgcolor: "background.paper",
-            boxShadow: 24,
-            p: 4,
-            borderRadius: 2,
-            border: "1px solid #ccc",
-          }}
-        >
-          <Typography variant="h6" component="h2" align="center" gutterBottom>
-            Payroll Status
-          </Typography>
-          <Typography
-            variant="body1"
-            align="center"
-            color="textSecondary"
-            gutterBottom
-          >
-            {payrollStatus}
-          </Typography>
-          <Button variant="contained" onClick={handleClose} fullWidth>
-            Close
-          </Button>
-        </Box>
-      </Modal>
     </div>
   );
 };

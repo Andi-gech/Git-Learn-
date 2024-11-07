@@ -4,7 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import axios from "axios";
 
 import useSignIn from "react-auth-kit/hooks/useSignIn";
-import { useNavigate, useNavigation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 function TextField({ label, type = "text", value, onChange }) {
   return (

@@ -21,8 +21,8 @@ export default function AddDeductions({ onClose }) {
     },
   });
   return (
-    <div className="w-full h-full bg-white absolute top-0 z-10 shadow-lg p-4">
-      <div className="flex items-center justify-between h-[50px] bg-gray-100 px-4">
+    <div className="w-full h-full overflow-hidden bg-white dark:bg-zinc-900 absolute top-0 z-10 shadow-lg p-4">
+      <div className="flex items-center justify-between h-[50px]  px-4">
         <p className="text-[20px] font-bold m-0">Add Deductions</p>
         <p
           onClick={onClose}

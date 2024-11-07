@@ -1,4 +1,3 @@
-import { FaBell } from "react-icons/fa";
 import { FaGear } from "react-icons/fa6";
 import { AreaChart, Area, XAxis, Tooltip } from "recharts";
 import { DataGrid } from "@mui/x-data-grid";
@@ -8,17 +7,28 @@ import Settings from "../Popups/Settings";
 import { useState } from "react";
 import UseFetchDepartments from "../hooks/UseFetchDepartments";
 import UseFetchPayroll from "../hooks/UseFetchPayroll";
+import LoadingPopup from "../Popups/LoadingPopup";
+import ErrorPopup from "../Popups/ErrorPopup";
+import { ThemeProvider, createTheme } from "@mui/material/styles";
 export default function Home() {
   const [settingson, setsetting] = useState();
-  const { data } = UseFetchDepartments();
-  const { data: payrolls } = UseFetchPayroll(2024, 10);
+  const {
+    data,
+    isLoading: isDepartmentLoading,
+    isError: isErrorDepartment,
+  } = UseFetchDepartments();
+  const {
+    data: payrolls,
+    isLoading: isPayrollLoading,
+    isError: isErrorPayroll,
+  } = UseFetchPayroll(2024, 10);
   const date = new Date();
 
   const rows = payrolls?.data?.map((payroll) => ({
     id: payroll.id,
     employeeName: payroll.employeeFirstName,
     payrollDate: payroll.month + "-" + payroll.year,
-    amount: payroll.netPay,
+    amount: payroll.netPay > 0 ? payroll.netPay : 0,
     status: payroll.paymentStatus,
   }));
 
@@ -30,7 +40,7 @@ export default function Home() {
   ];
 
   return (
-    <div className="w-full ml-[15%] bg-white flex flex-col px-[20px] py-[20px]">
+    <div className="w-full relative ml-[15%]   bg-white  dark:bg-zinc-800 flex flex-col px-2 ">
       {settingson && (
         <Settings
           onClose={() => {
@@ -38,17 +48,18 @@ export default function Home() {
           }}
         />
       )}
+      {(isPayrollLoading || isDepartmentLoading) && <LoadingPopup />}
+      {false && <ErrorPopup />}
       <div className="w-full h-[50px]  rounded-md flex flex-row items-center justify-between px-4">
-        <p className="text-[24px] text-gray-800 font-bold">Payroll Dashboard</p>
+        <p className="text-[24px] text-gray-800 dark:text-white font-bold">
+          Payroll Dashboard
+        </p>
         <div className="flex flex-row ">
-          <div className="w-[40px] h-[40px] mx-2  bg-white shadow-sm shadow-zinc-300 rounded-md flex items-center justify-center">
-            <FaBell />
-          </div>
           <div
             onClick={() => setsetting(true)}
-            className="w-[40px] h-[40px] mx-2 bg-white shadow-sm shadow-zinc-300 rounded-md flex items-center justify-center"
+            className="w-[40px] h-[40px] mx-2 bg-white dark:bg-zinc-800 shadow-sm shadow-zinc-300 rounded-md flex items-center justify-center"
           >
-            <FaGear />
+            <FaGear className=" dark:text-white" />
           </div>
           <Button variant="contained" color="primary">
             CREATE NEW Department
@@ -57,7 +68,7 @@ export default function Home() {
       </div>
       <div className="w-full flex flex-row  flex-wrap overflow-hidden  mt-4 rounded-md">
         <div className="w-full flex flex-row flex-wrap overflow-hidden mt-4 rounded-md">
-          <div className="w-[650px] flex items-center justify-center flex-shrink-0 bg-white border-[1px] border-gray-200 h-[250px] mr-5 rounded-md">
+          <div className="w-[650px] flex items-center justify-center flex-shrink-0 bg-white dark:bg-zinc-900 border-[1px] border-gray-200 dark:border-gray-700 h-[250px] mr-5 rounded-md">
             <AreaChart
               width={600}
               height={240}
@@ -89,7 +100,7 @@ export default function Home() {
             </AreaChart>
           </div>
 
-          <div className="w-[382px] flex-shrink-0 bg-yellow-50 flex flex-row items-center justify-center rounded-md h-[250px] border-[1px] border-gray-200">
+          <div className="w-[382px] flex-shrink-0 bg-yellow-50 dark:bg-zinc-800 flex flex-row items-center justify-center rounded-md h-[250px] border-[1px] border-gray-200 dark:border-gray-700">
             <div className="w-[150px] rounded-md h-[200px] bg-zinc-900 flex flex-col items-center justify-center">
               <p className="text-[20px] text-white font-bold">
                 {date.toLocaleString("en-US", { month: "long" })}
@@ -106,19 +117,28 @@ export default function Home() {
             </div>
           </div>
         </div>
-        <div className="w-[650px] border-[1px] border-gray-200 flex-shrink-0  mr-5  mt-5 h-[400px] rounded-[10px]">
+        <div className="w-[650px] border-[1px] border-gray-200 dark:border-gray-900 flex-shrink-0  mr-5  mt-5 h-[400px] rounded-[10px]">
           <div className="w-full h-[50px] flex items-center mx-2 ">
-            <p className="text-[18px] text-gray-800 font-bold">
+            <p className="text-[18px] text-gray-800 dark:text-white font-bold">
               Transaction History
             </p>
           </div>
-          <DataGrid rows={rows} columns={columns} pageSize={5}></DataGrid>
+          <DataGrid
+            disableRowSelectionOnClick
+            rows={rows}
+            columns={columns}
+            pageSize={5}
+          ></DataGrid>
         </div>
-        <div className="w-[35%] flex-shrink-0 bg-white border-[1px] border-gray-200   p-2  mt-5 h-[450px] rounded-md">
-          <div className="w-full h-[50px] bg-white flex flex-row items-center justify-between ">
+        <div className="w-[35%] flex-shrink-0 bg-white dark:bg-zinc-900 border-[1px] border-gray-200  dark:border-gray-800  p-2  mt-5 h-[450px] rounded-md">
+          <div className="w-full h-[50px] bg-white dark:bg-zinc-900 flex flex-row items-center justify-between ">
             <div>
-              <p className="font-bold">Payroll Summary</p>
-              <p className="text-gray-500">From 1-31 March,2022</p>
+              <p className="font-bold text-black dark:text-white">
+                Payroll Summary
+              </p>
+              <p className="text-gray-500 dark:text-white">
+                From 1-31 March,2022
+              </p>
             </div>
             <p className=" font-bold text-[14px] text-blue-500">View Report</p>
           </div>
